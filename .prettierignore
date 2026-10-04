@@ -1,0 +1,7 @@
+node_modules
+.pnpm-store
+.next
+src/generated
+package-lock.json
+PROJECT_SPEC.md
+prisma/migrations

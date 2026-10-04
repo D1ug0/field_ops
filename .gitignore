@@ -1,0 +1,16 @@
+node_modules/
+.pnpm-store/
+.next/
+.env
+.env.*
+!.env.example
+src/generated/
+*.tsbuildinfo
+coverage/
+.DS_Store
+artifacts/
+*.log
+.cache/
+.idea/
+*.pem
+*.key

@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  DISPATCHER
+  FIELD_ENGINEER
+  SUPPORT_ENGINEER
+  VIEWER
+}
+
+enum LocationType {
+  STORE
+  WAREHOUSE
+  PRODUCTION
+  OFFICE
+}
+
+enum DeviceCategory {
+  POS
+  PC
+  LAPTOP
+  SCALE
+  BARCODE_SCANNER
+  FISCAL_DEVICE
+  RECEIPT_PRINTER
+  OFFICE_PRINTER
+  MFP
+  TSD
+  SWITCH
+  ROUTER
+  ACCESS_POINT
+  IP_PHONE
+  CAMERA
+  OTHER
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+  MAINTENANCE
+  UNKNOWN
+  RETIRED
+}
+
+enum Priority {
+  P1_CRITICAL
+  P2_HIGH
+  P3_MEDIUM
+  P4_LOW
+}
+
+enum IncidentStatus {
+  NEW
+  TRIAGE
+  ASSIGNED
+  IN_PROGRESS
+  ON_SITE
+  WAITING
+  ESCALATED
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum VisitStatus {
+  PLANNED
+  TRAVELING
+  ON_SITE
+  COMPLETED
+  CANCELLED
+}
+
+enum StepStatus {
+  PASS
+  FAIL
+  SKIPPED
+  NOT_APPLICABLE
+}
+
+enum MaintenanceType {
+  DIAGNOSTIC
+  REPAIR
+  REPLACEMENT
+  PREVENTIVE
+  CONFIGURATION
+  CLEANING
+  SOFTWARE
+  NETWORK
+}
+
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  name         String
+  passwordHash String
+  role         Role @default(VIEWER)
+  active       Boolean @default(true)
+  createdAt    DateTime @default(now())
+  assigned     Incident[] @relation("AssignedEngineer")
+  reported     Incident[] @relation("Reporter")
+  events       IncidentEvent[]
+  comments     IncidentComment[]
+  visits       ServiceVisit[]
+  maintenance  MaintenanceRecord[]
+  diagnostics  DiagnosticSession[]
+}
+
+model Location {
+  id        String @id @default(cuid())
+  code      String @unique
+  name      String
+  type      LocationType
+  address   String
+  city      String
+  latitude  Float
+  longitude Float
+  phone     String @default("")
+  active    Boolean @default(true)
+  subnet    String @default("")
+  gateway   String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  devices   Device[]
+  incidents Incident[]
+  visits    ServiceVisit[]
+  alerts    Alert[]
+}
+
+model Device {
+  id               String @id @default(cuid())
+  assetTag         String @unique
+  name             String
+  category         DeviceCategory
+  vendor           String
+  model            String
+  serialNumber     String @unique
+  locationId       String
+  location         Location @relation(fields: [locationId], references: [id])
+  parentId         String?
+  parent           Device? @relation("Peripherals", fields: [parentId], references: [id])
+  children         Device[] @relation("Peripherals")
+  ipAddress        String @default("")
+  macAddress       String @default("")
+  hostname         String @default("")
+  status           DeviceStatus @default(UNKNOWN)
+  monitoringStatus String @default("SIMULATED")
+  lastSeenAt       DateTime?
+  installedAt      DateTime @default(now())
+  warrantyUntil    DateTime?
+  pluSyncStatus    String?
+  lastPluSyncAt    DateTime?
+  printerStatus    String?
+  paperStatus      String?
+  scaleStatus      String?
+  firmwareVersion String?
+  notes            String @default("")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  incidents        Incident[]
+  maintenance      MaintenanceRecord[]
+  alerts           Alert[]
+  heartbeats       DeviceHeartbeat[]
+
+  @@index([locationId, status])
+  @@index([category])
+}
+
+model Incident {
+  id           String @id @default(cuid())
+  sequence     Int @unique @default(autoincrement())
+  title        String
+  description  String
+  priority     Priority @default(P3_MEDIUM)
+  status       IncidentStatus @default(NEW)
+  category     String @default("OTHER")
+  locationId   String
+  location     Location @relation(fields: [locationId], references: [id])
+  deviceId     String?
+  device       Device? @relation(fields: [deviceId], references: [id])
+  createdById  String
+  createdBy    User @relation("Reporter", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User? @relation("AssignedEngineer", fields: [assignedToId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  assignedAt   DateTime?
+  startedAt    DateTime?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  resolution   String?
+  rootCause    String?
+  comments     IncidentComment[]
+  events       IncidentEvent[]
+  visits       ServiceVisit[]
+  diagnostics  DiagnosticSession[]
+  maintenance  MaintenanceRecord[]
+
+  @@index([status, priority])
+  @@index([assignedToId])
+  @@index([locationId])
+}
+
+model IncidentComment {
+  id         String @id @default(cuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id])
+  authorId   String
+  author     User @relation(fields: [authorId], references: [id])
+  body       String
+  createdAt  DateTime @default(now())
+}
+
+model IncidentEvent {
+  id         String @id @default(cuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id])
+  actorId    String
+  actor      User @relation(fields: [actorId], references: [id])
+  type       String
+  message    String
+  createdAt  DateTime @default(now())
+
+  @@index([incidentId, createdAt])
+}
+
+model ServiceVisit {
+  id            String @id @default(cuid())
+  incidentId    String
+  incident      Incident @relation(fields: [incidentId], references: [id])
+  engineerId    String
+  engineer      User @relation(fields: [engineerId], references: [id])
+  locationId    String
+  location      Location @relation(fields: [locationId], references: [id])
+  status        VisitStatus @default(PLANNED)
+  scheduledAt   DateTime
+  arrivedAt     DateTime?
+  completedAt   DateTime?
+  travelNotes   String @default("")
+  workPerformed String @default("")
+  result        String @default("")
+
+  @@index([engineerId, scheduledAt])
+}
+
+model MaintenanceRecord {
+  id          String @id @default(cuid())
+  deviceId    String
+  device      Device @relation(fields: [deviceId], references: [id])
+  engineerId  String
+  engineer    User @relation(fields: [engineerId], references: [id])
+  incidentId  String?
+  incident    Incident? @relation(fields: [incidentId], references: [id])
+  type        MaintenanceType
+  description String
+  result      String
+  performedAt DateTime @default(now())
+}
+
+model DiagnosticTemplate {
+  id          String @id @default(cuid())
+  name        String
+  category    DeviceCategory
+  description String
+  steps       DiagnosticStep[]
+  sessions    DiagnosticSession[]
+}
+
+model DiagnosticStep {
+  id         String @id @default(cuid())
+  templateId String
+  template   DiagnosticTemplate @relation(fields: [templateId], references: [id])
+  order      Int
+  title      String
+  hint       String
+  results    DiagnosticStepResult[]
+
+  @@unique([templateId, order])
+}
+
+model DiagnosticSession {
+  id          String @id @default(cuid())
+  incidentId  String
+  incident    Incident @relation(fields: [incidentId], references: [id])
+  templateId  String
+  template    DiagnosticTemplate @relation(fields: [templateId], references: [id])
+  engineerId  String
+  engineer    User @relation(fields: [engineerId], references: [id])
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  summary     String @default("")
+  results     DiagnosticStepResult[]
+
+  @@index([incidentId])
+}
+
+model DiagnosticStepResult {
+  id        String @id @default(cuid())
+  sessionId String
+  session   DiagnosticSession @relation(fields: [sessionId], references: [id])
+  stepId    String
+  step      DiagnosticStep @relation(fields: [stepId], references: [id])
+  status    StepStatus
+  comment   String @default("")
+  value     String @default("")
+
+  @@unique([sessionId, stepId])
+}
+
+model KnowledgeArticle {
+  id         String @id @default(cuid())
+  title      String
+  category   String
+  symptoms   String
+  causes     String
+  steps      String
+  resolution String
+  escalation String
+  updatedAt  DateTime @updatedAt
+}
+
+model Alert {
+  id         String @id @default(cuid())
+  deviceId   String
+  device     Device @relation(fields: [deviceId], references: [id])
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+  type       String
+  severity   String
+  message    String
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+}
+
+model DeviceHeartbeat {
+  id        String @id @default(cuid())
+  deviceId  String
+  device    Device @relation(fields: [deviceId], references: [id])
+  online    Boolean
+  latency   Int
+  createdAt DateTime @default(now())
+
+  @@index([deviceId, createdAt])
+}
