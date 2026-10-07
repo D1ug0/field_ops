@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { pageActor } from "@/lib/session";
-import { engineers, getIncident } from "@/lib/queries";
+import { getIncident } from "@/lib/queries/incidents";
+import { engineers } from "@/lib/queries/users";
 import { db } from "@/lib/db";
 import { priorities, statuses, rootCauses } from "@/lib/domain";
 import { dateTime, incidentNumber, remainingSlaMinutes } from "@/lib/utils";

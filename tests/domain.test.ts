@@ -14,7 +14,7 @@ import {
   resolveInput,
   stepInput,
 } from "@/lib/validation";
-import { incidentWhere } from "@/lib/queries";
+import { incidentWhere } from "@/lib/queries/filters";
 import { incidentNumber } from "@/lib/utils";
 const engineer: Actor = {
   id: "engineer-1",

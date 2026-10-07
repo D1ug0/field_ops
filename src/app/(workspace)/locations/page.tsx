@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Building2, ArrowUpRight } from "lucide-react";
 import { pageActor } from "@/lib/session";
-import { listLocations } from "@/lib/queries";
+import { listLocations } from "@/lib/queries/locations";
 import { locationTypes } from "@/lib/domain";
 import {
   PageHeader,

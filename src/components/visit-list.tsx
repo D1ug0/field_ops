@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MapPin, Clock3, ArrowUpRight } from "lucide-react";
-import { listVisits } from "@/lib/queries";
+import { listVisits } from "@/lib/queries/visits";
 import { visitStatuses, priorities, type Actor } from "@/lib/domain";
 import { dateTime, incidentNumber } from "@/lib/utils";
 import { Badge } from "./ui/badge";

@@ -5,14 +5,15 @@ import { apiActor } from "@/lib/session";
 import { DomainError, statuses, type Actor } from "@/lib/domain";
 import { db } from "@/lib/db";
 import {
-  engineers,
   getIncident,
-  listDevices,
   listIncidents,
-  listLocations,
-  listVisits,
-  scope,
-} from "@/lib/queries";
+  listIncidentPage,
+} from "@/lib/queries/incidents";
+import { listDevices, listDevicePage } from "@/lib/queries/devices";
+import { listLocations } from "@/lib/queries/locations";
+import { engineers } from "@/lib/queries/users";
+import { listVisits } from "@/lib/queries/visits";
+import { scope, normalizeFilters } from "@/lib/queries/filters";
 import {
   addComment,
   assignIncident,
@@ -42,13 +43,23 @@ async function read(
 ): Promise<unknown> {
   const [resource, id, nested] = path;
   if (path.length > 3) throw new DomainError("Маршрут не найден.", 404);
-  const filters = Object.fromEntries(req.nextUrl.searchParams);
+  const filters = normalizeFilters(
+    Object.fromEntries(
+      Array.from(req.nextUrl.searchParams.keys(), (key) => [
+        key,
+        req.nextUrl.searchParams.get(key),
+      ]),
+    ),
+  );
+  const paginated =
+    req.nextUrl.searchParams.has("page") ||
+    req.nextUrl.searchParams.has("pageSize");
   if (resource === "search" && !id) {
     const q = filters.q?.trim().slice(0, 100);
     if (!q || q.length < 2) return [];
     const [incidents, devices, locations] = await Promise.all([
-      listIncidents(actor, { q }),
-      listDevices({ q }),
+      listIncidents(actor, { q }, 8),
+      listDevices({ q }, 8),
       db.location.findMany({
         where: {
           OR: [
@@ -60,13 +71,13 @@ async function read(
       }),
     ]);
     return [
-      ...incidents.slice(0, 8).map((i) => ({
+      ...incidents.map((i) => ({
         id: i.id,
         label: `${incidentNumber(i.sequence)} · ${i.title}`,
         detail: i.location.name,
         href: `/incidents/${i.id}`,
       })),
-      ...devices.slice(0, 8).map((d) => ({
+      ...devices.map((d) => ({
         id: d.id,
         label: d.name,
         detail: `${d.assetTag} · ${d.ipAddress}`,
@@ -81,9 +92,16 @@ async function read(
     ];
   }
   if (resource === "incidents")
-    return id ? getIncident(actor, id) : listIncidents(actor, filters);
+    return id
+      ? getIncident(actor, id)
+      : paginated
+        ? listIncidentPage(actor, filters)
+        : listIncidents(actor, filters);
   if (resource === "locations") {
-    if (nested === "devices") return listDevices({ location: id });
+    if (nested === "devices") {
+      const input = { ...filters, location: id };
+      return paginated ? listDevicePage(input) : listDevices(input);
+    }
     const all = await listLocations(actor);
     return id ? (all.find((item) => item.id === id) ?? null) : all;
   }
@@ -99,7 +117,9 @@ async function read(
             incidents: { where: scope(actor) },
           },
         })
-      : listDevices(filters);
+      : paginated
+        ? listDevicePage(filters)
+        : listDevices(filters);
   if (resource === "visits") return listVisits(actor);
   if (resource === "engineers") return engineers();
   if (resource === "diagnostic-templates")

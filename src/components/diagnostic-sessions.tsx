@@ -1,4 +1,4 @@
-import type { getIncident } from "@/lib/queries";
+import type { getIncident } from "@/lib/queries/incidents";
 import type { DiagnosticTemplate } from "@/generated/prisma/client";
 import {
   canWork,

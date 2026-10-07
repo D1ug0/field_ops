@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { pageActor } from "@/lib/session";
-import { listDevices, listLocations } from "@/lib/queries";
+import { listDevicePage, deviceVendors } from "@/lib/queries/devices";
+import { listLocations } from "@/lib/queries/locations";
 import { categories, deviceStatuses } from "@/lib/domain";
 import {
   PageHeader,
@@ -13,19 +14,21 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EquipmentTable } from "@/components/equipment-table";
 import { DeviceForm } from "@/components/infrastructure-forms";
-import { db } from "@/lib/db";
+import { normalizeFilters, type SearchParams } from "@/lib/queries/filters";
+import { PaginationControls, PageSizeSelect } from "@/components/pagination";
 export default async function EquipmentPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<SearchParams>;
 }) {
   const actor = await pageActor();
-  const f = await searchParams;
-  const [devices, locations, vendors] = await Promise.all([
-    listDevices(f),
-    listLocations(actor),
-    db.device.findMany({ distinct: ["vendor"], select: { vendor: true } }),
-  ]);
+  const f = normalizeFilters(await searchParams);
+  const [{ items: devices, pagination }, locations, vendors] =
+    await Promise.all([
+      listDevicePage(f),
+      listLocations(actor),
+      deviceVendors(),
+    ]);
   return (
     <>
       <PageHeader
@@ -41,7 +44,7 @@ export default async function EquipmentPage({
       <Card>
         <SectionTitle
           title="Реестр оборудования"
-          subtitle={`${devices.length} устройств · до 500 результатов`}
+          subtitle={`${pagination.total} устройств по выбранным фильтрам`}
         />
         <form className="filter-bar">
           <Field label="Поиск">
@@ -81,6 +84,7 @@ export default async function EquipmentPage({
               <SelectOptions items={deviceStatuses} />
             </select>
           </Field>
+          <PageSizeSelect pageSize={pagination.pageSize} />
           <Button type="submit" size="sm">
             Применить
           </Button>
@@ -89,6 +93,11 @@ export default async function EquipmentPage({
           </Link>
         </form>
         <EquipmentTable devices={devices} />
+        <PaginationControls
+          pagination={pagination}
+          pathname="/equipment"
+          filters={f}
+        />
       </Card>
     </>
   );

@@ -10,13 +10,10 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { pageActor } from "@/lib/session";
-import {
-  listIncidents,
-  listLocations,
-  listVisits,
-  scope,
-  todayWindow,
-} from "@/lib/queries";
+import { listIncidents, activeIncidentCounts } from "@/lib/queries/incidents";
+import { listLocations } from "@/lib/queries/locations";
+import { listVisits, todayWindow } from "@/lib/queries/visits";
+import { scope } from "@/lib/queries/filters";
 import { activeStatuses } from "@/lib/domain";
 import { PageHeader, SectionTitle, Stat } from "@/components/common";
 import { Card } from "@/components/ui/card";
@@ -27,36 +24,44 @@ import { VisitList } from "@/components/visit-list";
 
 export default async function Dashboard() {
   const actor = await pageActor();
-  const [incidents, locations, visits, deviceCounts, alerts, users] =
-    await Promise.all([
-      listIncidents(actor, { status: "active" }),
-      listLocations(actor),
-      listVisits(actor),
-      db.device.groupBy({ by: ["status"], _count: { _all: true } }),
-      db.alert.findMany({
-        where: { resolvedAt: null },
-        include: { device: true, location: true },
-        take: 3,
-        orderBy: { createdAt: "desc" },
-      }),
-      db.user.findMany({
-        where: {
-          role: { in: ["FIELD_ENGINEER", "SUPPORT_ENGINEER"] },
-          ...(actor.role === "FIELD_ENGINEER" ? { id: actor.id } : {}),
-        },
-        select: {
-          id: true,
-          name: true,
-          _count: {
-            select: {
-              assigned: {
-                where: { ...scope(actor), status: { in: activeStatuses } },
-              },
+  const [
+    incidents,
+    locations,
+    visits,
+    deviceCounts,
+    alerts,
+    users,
+    incidentCounts,
+  ] = await Promise.all([
+    listIncidents(actor, { status: "active" }, 6),
+    listLocations(actor),
+    listVisits(actor),
+    db.device.groupBy({ by: ["status"], _count: { _all: true } }),
+    db.alert.findMany({
+      where: { resolvedAt: null },
+      include: { device: true, location: true },
+      take: 3,
+      orderBy: { createdAt: "desc" },
+    }),
+    db.user.findMany({
+      where: {
+        role: { in: ["FIELD_ENGINEER", "SUPPORT_ENGINEER"] },
+        ...(actor.role === "FIELD_ENGINEER" ? { id: actor.id } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: {
+            assigned: {
+              where: { ...scope(actor), status: { in: activeStatuses } },
             },
           },
         },
-      }),
-    ]);
+      },
+    }),
+    activeIncidentCounts(actor),
+  ]);
   const count = (status: string) =>
     deviceCounts.find((d) => d.status === status)?._count._all ?? 0;
   const totalDevices = deviceCounts.reduce((n, d) => n + d._count._all, 0);
@@ -67,8 +72,6 @@ export default async function Dashboard() {
       v.scheduledAt < window.lt &&
       v.status !== "CANCELLED",
   );
-  const critical = incidents.filter((i) => i.priority === "P1_CRITICAL").length;
-  const assigned = incidents.filter((i) => i.assignedToId === actor.id).length;
   const impacted = locations.filter((l) => l._count.incidents > 0);
   const date = new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
@@ -101,14 +104,14 @@ export default async function Dashboard() {
       <div className="stats-grid">
         <Stat
           label="Открытые инциденты"
-          value={incidents.length}
+          value={incidentCounts.total}
           detail={`${impacted.length} объектов с инцидентами`}
           icon={<CircleAlert size={17} />}
           href="/incidents?status=active"
         />
         <Stat
           label="Критические инциденты"
-          value={critical}
+          value={incidentCounts.critical}
           detail="Приоритет P1 · требуют внимания"
           icon={<TriangleAlert size={17} />}
           tone="red"
@@ -124,7 +127,7 @@ export default async function Dashboard() {
         />
         <Stat
           label="Назначено мне"
-          value={assigned}
+          value={incidentCounts.assigned}
           detail={`${todayVisits.filter((v) => v.engineerId === actor.id).length} выездов сегодня`}
           icon={<BriefcaseBusiness size={17} />}
           tone="blue"
@@ -140,7 +143,7 @@ export default async function Dashboard() {
               href="/incidents"
               link="Все инциденты"
             />
-            <IncidentTable incidents={incidents.slice(0, 6)} compact />
+            <IncidentTable incidents={incidents} compact />
           </Card>
           <Card>
             <SectionTitle

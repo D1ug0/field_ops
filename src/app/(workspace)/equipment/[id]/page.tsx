@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { pageActor } from "@/lib/session";
 import { db } from "@/lib/db";
-import { listIncidents, listLocations } from "@/lib/queries";
+import { listIncidents } from "@/lib/queries/incidents";
+import { listLocations } from "@/lib/queries/locations";
 import { categories, deviceStatuses, maintenanceTypes } from "@/lib/domain";
 import { dateTime } from "@/lib/utils";
 import {

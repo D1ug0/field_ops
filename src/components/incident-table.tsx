@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { listIncidents } from "@/lib/queries";
+import type { IncidentListItem } from "@/lib/queries/incidents";
 import { incidentNumber, dateTime } from "@/lib/utils";
 import { priorities, statuses } from "@/lib/domain";
 import { Badge } from "./ui/badge";
@@ -8,7 +8,7 @@ export function IncidentTable({
   incidents,
   compact = false,
 }: {
-  incidents: Awaited<ReturnType<typeof listIncidents>>;
+  incidents: IncidentListItem[];
   compact?: boolean;
 }) {
   if (!incidents.length) return <Empty title="Инциденты не найдены" />;

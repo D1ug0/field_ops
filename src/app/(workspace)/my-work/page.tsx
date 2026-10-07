@@ -1,5 +1,6 @@
 import { pageActor } from "@/lib/session";
-import { listIncidents, listVisits, todayWindow } from "@/lib/queries";
+import { listIncidents } from "@/lib/queries/incidents";
+import { listVisits, todayWindow } from "@/lib/queries/visits";
 import {
   BriefcaseBusiness,
   CalendarDays,

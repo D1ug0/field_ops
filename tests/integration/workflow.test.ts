@@ -15,7 +15,7 @@ import {
   completeDiagnostics,
 } from "@/lib/services/diagnostics";
 import { saveDevice, saveLocation } from "@/lib/services/infrastructure";
-import { listIncidents } from "@/lib/queries";
+import { listIncidents } from "@/lib/queries/incidents";
 
 const prefix = `test-${randomUUID().slice(0, 16)}`;
 const admin: Actor = {

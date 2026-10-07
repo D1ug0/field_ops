@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { listDevices } from "@/lib/queries";
+import { listDevices } from "@/lib/queries/devices";
 import { Wifi, WifiOff, TriangleAlert, Monitor } from "lucide-react";
 import { PageHeader, Stat, SectionTitle } from "@/components/common";
 import { Card } from "@/components/ui/card";
@@ -24,7 +24,7 @@ export default async function MonitoringPage() {
       <div className="stats-grid">
         <Stat
           label="Всего оборудования"
-          value={devices.length}
+          value={counts.reduce((total, item) => total + item._count._all, 0)}
           detail="Учётные устройства"
           icon={<Monitor size={17} />}
         />

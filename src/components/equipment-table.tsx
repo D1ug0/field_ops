@@ -1,13 +1,9 @@
 import Link from "next/link";
-import type { listDevices } from "@/lib/queries";
+import type { DeviceListItem } from "@/lib/queries/devices";
 import { categories, deviceStatuses } from "@/lib/domain";
 import { Badge } from "./ui/badge";
 import { Empty } from "./common";
-export function EquipmentTable({
-  devices,
-}: {
-  devices: Awaited<ReturnType<typeof listDevices>>;
-}) {
+export function EquipmentTable({ devices }: { devices: DeviceListItem[] }) {
   return devices.length ? (
     <div className="table-scroll">
       <table>

@@ -7,7 +7,8 @@ import {
   terminalStatuses,
   type Actor,
 } from "@/lib/domain";
-import type { engineers, getIncident } from "@/lib/queries";
+import type { getIncident } from "@/lib/queries/incidents";
+import type { engineers } from "@/lib/queries/users";
 import { Field, FormPanel, SelectOptions } from "./common";
 import { Card } from "./ui/card";
 import { MutationForm } from "./mutation-form";

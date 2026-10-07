@@ -1,5 +1,5 @@
 import { pageActor } from "@/lib/session";
-import { listVisits } from "@/lib/queries";
+import { listVisits } from "@/lib/queries/visits";
 import { PageHeader, SectionTitle } from "@/components/common";
 import { Card } from "@/components/ui/card";
 import { VisitList } from "@/components/visit-list";

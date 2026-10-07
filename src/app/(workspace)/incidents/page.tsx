@@ -1,10 +1,8 @@
 import { pageActor } from "@/lib/session";
-import {
-  engineers,
-  listDevices,
-  listIncidents,
-  listLocations,
-} from "@/lib/queries";
+import { listIncidentPage } from "@/lib/queries/incidents";
+import { listDevices } from "@/lib/queries/devices";
+import { listLocations } from "@/lib/queries/locations";
+import { engineers } from "@/lib/queries/users";
 import { categories, priorities, statuses } from "@/lib/domain";
 import {
   PageHeader,
@@ -18,22 +16,25 @@ import { Button } from "@/components/ui/button";
 import { IncidentTable } from "@/components/incident-table";
 import { IncidentCreate } from "@/components/incident-create";
 import Link from "next/link";
+import { normalizeFilters, type SearchParams } from "@/lib/queries/filters";
+import { PaginationControls, PageSizeSelect } from "@/components/pagination";
 export default async function IncidentsPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<SearchParams>;
 }) {
   const actor = await pageActor();
-  const f = await searchParams;
-  const [incidents, locations, people, devices] = await Promise.all([
-    listIncidents(actor, f),
-    listLocations(actor),
-    engineers(),
-    listDevices(),
-  ]);
+  const f = normalizeFilters(await searchParams);
   const create = ["ADMIN", "DISPATCHER", "SUPPORT_ENGINEER"].includes(
     actor.role,
   );
+  const [{ items: incidents, pagination }, locations, people, devices] =
+    await Promise.all([
+      listIncidentPage(actor, f),
+      listLocations(actor),
+      engineers(),
+      create ? listDevices() : Promise.resolve([]),
+    ]);
   return (
     <>
       <PageHeader
@@ -51,7 +52,7 @@ export default async function IncidentsPage({
       <Card>
         <SectionTitle
           title="Журнал инцидентов"
-          subtitle={`${incidents.length} записей · до 200 результатов`}
+          subtitle={`${pagination.total} записей по выбранным фильтрам`}
         />
         <form className="filter-bar">
           <Field label="Поиск">
@@ -107,6 +108,7 @@ export default async function IncidentsPage({
           <Field label="Дата создания · МСК">
             <input type="date" name="date" defaultValue={f.date} />
           </Field>
+          <PageSizeSelect pageSize={pagination.pageSize} />
           <Button type="submit" size="sm">
             Применить
           </Button>
@@ -115,6 +117,11 @@ export default async function IncidentsPage({
           </Link>
         </form>
         <IncidentTable incidents={incidents} />
+        <PaginationControls
+          pagination={pagination}
+          pathname="/incidents"
+          filters={f}
+        />
       </Card>
     </>
   );
