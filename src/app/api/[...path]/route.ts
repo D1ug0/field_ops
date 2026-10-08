@@ -9,7 +9,11 @@ import {
   listIncidents,
   listIncidentPage,
 } from "@/lib/queries/incidents";
-import { listDevices, listDevicePage } from "@/lib/queries/devices";
+import {
+  listDevices,
+  listDevicePage,
+  listIncidentDeviceOptions,
+} from "@/lib/queries/devices";
 import { listLocations } from "@/lib/queries/locations";
 import { engineers } from "@/lib/queries/users";
 import { listVisits } from "@/lib/queries/visits";
@@ -98,6 +102,7 @@ async function read(
         ? listIncidentPage(actor, filters)
         : listIncidents(actor, filters);
   if (resource === "locations") {
+    if (id && nested === "device-options") return listIncidentDeviceOptions(id);
     if (nested === "devices") {
       const input = { ...filters, location: id };
       return paginated ? listDevicePage(input) : listDevices(input);

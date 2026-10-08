@@ -48,6 +48,11 @@ class Client {
 }
 const anonymous = new Client();
 assert.equal((await anonymous.request("/api/incidents")).status, 401);
+assert.equal(
+  (await anonymous.request("/api/locations/location-001/device-options"))
+    .status,
+  401,
+);
 assert.equal((await anonymous.request("/dashboard")).status, 307);
 const engineer = new Client();
 await engineer.login("engineer");
@@ -107,6 +112,35 @@ assert.equal(
 const admin = new Client();
 await admin.login("admin");
 assert.equal((await admin.request("/users")).status, 200);
+const dispatcher = new Client();
+await dispatcher.login("dispatcher");
+assert.equal((await dispatcher.request("/incidents")).status, 200);
+const deviceResponse = await dispatcher.request(
+  "/api/locations/location-001/device-options?location=location-002",
+);
+assert.equal(deviceResponse.status, 200);
+assert.equal(deviceResponse.headers.get("cache-control"), "no-store");
+const devices: {
+  id: string;
+  name: string;
+  assetTag: string;
+  ipAddress: string;
+  status: string;
+}[] = await (
+  await dispatcher.request("/api/locations/location-001/devices")
+).json();
+assert.ok(devices.length > 0);
+assert.deepEqual(
+  await deviceResponse.json(),
+  devices
+    .filter((device) => device.status !== "RETIRED")
+    .map(({ id, name, assetTag, ipAddress }) => ({
+      id,
+      name,
+      assetTag,
+      ipAddress,
+    })),
+);
 const search = await (
   await engineer.request("/api/search?q=10.1.20.24")
 ).json();
@@ -116,5 +150,5 @@ assert.ok(
   ),
 );
 console.log(
-  "HTTP smoke checks passed: authentication, 15 pages, role scope, readonly access, origin protection, global search.",
+  "HTTP smoke checks passed: authentication, 15 pages, role scope, readonly access, origin protection, global search, incident equipment options.",
 );

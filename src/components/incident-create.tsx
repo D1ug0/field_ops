@@ -3,12 +3,11 @@ import { useState } from "react";
 import { MutationForm } from "./mutation-form";
 import { Field, SelectOptions } from "./common";
 import { priorities } from "@/lib/domain";
+import { IncidentDeviceSelect } from "./incident-device-select";
 export function IncidentCreate({
   locations,
-  devices,
 }: {
   locations: { id: string; name: string; code: string }[];
-  devices: { id: string; name: string; locationId: string }[];
 }) {
   const [locationId, setLocation] = useState(locations[0]?.id ?? "");
   return (
@@ -34,9 +33,13 @@ export function IncidentCreate({
       <Field label="Объект">
         <select
           name="locationId"
+          required
           value={locationId}
           onChange={(e) => setLocation(e.target.value)}
         >
+          {!locations.length && (
+            <option value="">Нет доступных объектов</option>
+          )}
           {locations.map((l) => (
             <option value={l.id} key={l.id}>
               {l.code} · {l.name}
@@ -44,18 +47,7 @@ export function IncidentCreate({
           ))}
         </select>
       </Field>
-      <Field label="Оборудование">
-        <select name="deviceId" key={locationId}>
-          <option value="">Без привязки к устройству</option>
-          {devices
-            .filter((d) => d.locationId === locationId)
-            .map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-        </select>
-      </Field>
+      <IncidentDeviceSelect key={locationId} locationId={locationId} />
       <Field label="Симптомы и обстоятельства">
         <textarea
           name="description"

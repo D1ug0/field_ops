@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { DomainError } from "@/lib/domain";
 import { deviceWhere, type FilterInput } from "./filters";
 import { queryPage } from "./page";
 
@@ -38,4 +39,32 @@ export async function deviceVendors() {
     select: { vendor: true },
     orderBy: { vendor: "asc" },
   });
+}
+
+const incidentDeviceSelect = {
+  id: true,
+  name: true,
+  assetTag: true,
+  ipAddress: true,
+} satisfies Prisma.DeviceSelect;
+
+export type IncidentDeviceOption = Prisma.DeviceGetPayload<{
+  select: typeof incidentDeviceSelect;
+}>;
+
+export async function listIncidentDeviceOptions(locationId: string) {
+  const location = await db.location.findUnique({
+    where: { id: locationId },
+    select: {
+      active: true,
+      devices: {
+        where: { status: { not: "RETIRED" } },
+        select: incidentDeviceSelect,
+        orderBy: { assetTag: "asc" },
+      },
+    },
+  });
+  if (!location) throw new DomainError("Объект не найден.", 404);
+  if (!location.active) throw new DomainError("Выберите действующий объект.");
+  return location.devices;
 }

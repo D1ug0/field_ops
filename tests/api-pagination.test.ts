@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   incidentPage: vi.fn(),
   deviceList: vi.fn(),
   devicePage: vi.fn(),
+  deviceOptions: vi.fn(),
 }));
 
 vi.mock("@/lib/session", () => ({ apiActor: mocks.actor }));
@@ -20,6 +21,7 @@ vi.mock("@/lib/queries/incidents", () => ({
 vi.mock("@/lib/queries/devices", () => ({
   listDevices: mocks.deviceList,
   listDevicePage: mocks.devicePage,
+  listIncidentDeviceOptions: mocks.deviceOptions,
 }));
 
 import { GET } from "@/app/api/[...path]/route";
@@ -42,6 +44,53 @@ beforeEach(() => {
   mocks.deviceList.mockResolvedValue([{ id: "device-1" }]);
   mocks.incidentPage.mockResolvedValue(page);
   mocks.devicePage.mockResolvedValue(page);
+  mocks.deviceOptions.mockResolvedValue([
+    { id: "device-1", name: "Demo scale", assetTag: "EQ-001", ipAddress: "" },
+  ]);
+});
+
+describe("incident equipment options API", () => {
+  it("returns lightweight options for the location in the path", async () => {
+    const response = await request(
+      ["locations", "location-1", "device-options"],
+      "?location=location-2&page=99&status=RETIRED",
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual([
+      { id: "device-1", name: "Demo scale", assetTag: "EQ-001", ipAddress: "" },
+    ]);
+    expect(mocks.deviceOptions).toHaveBeenCalledWith("location-1");
+    expect(mocks.deviceList).not.toHaveBeenCalled();
+    expect(mocks.devicePage).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [404, "Объект не найден."],
+    [400, "Выберите действующий объект."],
+  ])("preserves location errors (%s)", async (status, message) => {
+    mocks.deviceOptions.mockRejectedValue(new DomainError(message, status));
+    const response = await request([
+      "locations",
+      "location-1",
+      "device-options",
+    ]);
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual({ error: message });
+  });
+
+  it("requires authentication before loading equipment options", async () => {
+    mocks.actor.mockRejectedValue(
+      new DomainError("Требуется вход в систему.", 401),
+    );
+    const response = await request([
+      "locations",
+      "location-1",
+      "device-options",
+    ]);
+    expect(response.status).toBe(401);
+    expect(mocks.deviceOptions).not.toHaveBeenCalled();
+  });
 });
 
 function request(path: string[], query = "") {

@@ -1,6 +1,5 @@
 import { pageActor } from "@/lib/session";
 import { listIncidentPage } from "@/lib/queries/incidents";
-import { listDevices } from "@/lib/queries/devices";
 import { listLocations } from "@/lib/queries/locations";
 import { engineers } from "@/lib/queries/users";
 import { categories, priorities, statuses } from "@/lib/domain";
@@ -28,12 +27,11 @@ export default async function IncidentsPage({
   const create = ["ADMIN", "DISPATCHER", "SUPPORT_ENGINEER"].includes(
     actor.role,
   );
-  const [{ items: incidents, pagination }, locations, people, devices] =
+  const [{ items: incidents, pagination }, locations, people] =
     await Promise.all([
       listIncidentPage(actor, f),
       listLocations(actor),
       engineers(),
-      create ? listDevices() : Promise.resolve([]),
     ]);
   return (
     <>
@@ -43,10 +41,7 @@ export default async function IncidentsPage({
       />
       {create && (
         <FormPanel title="Новый инцидент">
-          <IncidentCreate
-            locations={locations.filter((l) => l.active)}
-            devices={devices}
-          />
+          <IncidentCreate locations={locations.filter((l) => l.active)} />
         </FormPanel>
       )}
       <Card>

@@ -7,10 +7,16 @@ import {
   listIncidentPage,
   listIncidents,
 } from "@/lib/queries/incidents";
-import { listDevicePage, listDevices } from "@/lib/queries/devices";
+import {
+  listDevicePage,
+  listDevices,
+  listIncidentDeviceOptions,
+} from "@/lib/queries/devices";
 
 const prefix = `pagination-${randomUUID()}`;
 const locationId = `${prefix}-location`;
+const inactiveLocationId = `${prefix}-inactive-location`;
+const emptyLocationId = `${prefix}-empty-location`;
 const engineer: Actor = {
   id: `${prefix}-engineer`,
   name: "Pagination engineer",
@@ -59,9 +65,27 @@ beforeAll(async () => {
       name: `Demo device ${index}`,
       locationId,
       category: "SCALE" as const,
-      status: index < 30 ? ("OFFLINE" as const) : ("ONLINE" as const),
+      status:
+        index === 504
+          ? ("RETIRED" as const)
+          : index < 30
+            ? ("OFFLINE" as const)
+            : ("ONLINE" as const),
       vendor: "Generic",
       model: "Demo",
+    })),
+  });
+  await db.location.createMany({
+    data: [inactiveLocationId, emptyLocationId].map((id) => ({
+      id,
+      code: id,
+      name: "Equipment options fixture",
+      type: "STORE" as const,
+      address: "Fictional district",
+      city: "Demo",
+      latitude: 52.37,
+      longitude: 4.9,
+      active: id !== inactiveLocationId,
     })),
   });
   await db.incident.createMany({
@@ -87,9 +111,47 @@ afterAll(async () => {
     return;
   await db.incident.deleteMany({ where: { locationId } });
   await db.device.deleteMany({ where: { locationId } });
-  await db.location.deleteMany({ where: { id: locationId } });
+  await db.location.deleteMany({
+    where: { id: { in: [locationId, inactiveLocationId, emptyLocationId] } },
+  });
   await db.user.deleteMany({ where: { id: { in: [engineer.id, other.id] } } });
   await db.$disconnect();
+});
+
+describe("PostgreSQL incident equipment options", () => {
+  it("returns all eligible devices beyond 500, excluding retired devices and unrelated locations", async () => {
+    const options = await listIncidentDeviceOptions(locationId);
+    expect(options).toHaveLength(504);
+    expect(options[0].id).toBe(`${prefix}-device-000`);
+    expect(options.at(-1)).toEqual({
+      id: `${prefix}-device-503`,
+      name: "Demo device 503",
+      assetTag: `${prefix}-503`,
+      ipAddress: "",
+    });
+    expect(options.some((device) => device.id === `${prefix}-device-504`)).toBe(
+      false,
+    );
+    expect(await listIncidentDeviceOptions(emptyLocationId)).toEqual([]);
+  });
+
+  it("rejects an inactive location", async () => {
+    await expect(
+      listIncidentDeviceOptions(inactiveLocationId),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "Выберите действующий объект.",
+    });
+  });
+
+  it("distinguishes a missing location from an empty one", async () => {
+    await expect(
+      listIncidentDeviceOptions(`${prefix}-missing`),
+    ).rejects.toMatchObject({
+      status: 404,
+      message: "Объект не найден.",
+    });
+  });
 });
 
 describe("PostgreSQL paginated registries", () => {
