@@ -28,12 +28,22 @@ export function scope(actor: Actor): Prisma.IncidentWhereInput {
   return actor.role === "FIELD_ENGINEER" ? { assignedToId: actor.id } : {};
 }
 
+function incidentDateRange(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value)
+    return;
+  const start = new Date(`${value}T00:00:00+03:00`);
+  return { gte: start, lt: new Date(start.getTime() + 86400000) };
+}
+
 export function incidentWhere(
   actor: Actor,
   input: FilterInput = {},
 ): Prisma.IncidentWhereInput {
   const f = normalizeFilters(input);
   const sequence = Number(f.q?.replace(/^INC-/i, ""));
+  const dateRange = incidentDateRange(f.date);
   return {
     ...scope(actor),
     ...(f.status && Object.hasOwn(statuses, f.status)
@@ -51,18 +61,7 @@ export function incidentWhere(
     ...(f.category && Object.hasOwn(categories, f.category)
       ? { device: { category: f.category as keyof typeof categories } }
       : {}),
-    ...(f.date &&
-    /^\d{4}-\d{2}-\d{2}$/.test(f.date) &&
-    !Number.isNaN(Date.parse(f.date))
-      ? {
-          createdAt: {
-            gte: new Date(`${f.date}T00:00:00+03:00`),
-            lt: new Date(
-              new Date(`${f.date}T00:00:00+03:00`).getTime() + 86400000,
-            ),
-          },
-        }
-      : {}),
+    ...(dateRange ? { createdAt: dateRange } : {}),
     ...(f.q
       ? {
           OR: [
