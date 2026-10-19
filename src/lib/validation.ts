@@ -23,6 +23,9 @@ const optionalId = z
   .string()
   .optional()
   .transform((v) => v || undefined);
+const coordinate = z
+  .union([z.number(), z.string().trim().min(1)])
+  .transform((value) => Number(value));
 export const incidentInput = z.object({
   title: text.min(5),
   description: note,
@@ -46,8 +49,8 @@ export const locationInput = z.object({
   ),
   address: text,
   city: text,
-  latitude: z.coerce.number().min(-85).max(85),
-  longitude: z.coerce.number().min(-180).max(180),
+  latitude: coordinate.pipe(z.number().min(-85).max(85)),
+  longitude: coordinate.pipe(z.number().min(-180).max(180)),
   phone: z.string().trim().max(80).default(""),
 });
 export const deviceInput = z.object({
