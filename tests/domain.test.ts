@@ -4,6 +4,7 @@ import {
   assertTransition,
   assertVisitTransition,
   canWork,
+  nextStatuses,
   requireRole,
   type Actor,
 } from "@/lib/domain";
@@ -59,6 +60,15 @@ describe("incident workflow", () => {
   it("formats numbers without collisions from padding", () => {
     expect(incidentNumber(42)).toBe("INC-000042");
     expect(incidentNumber(1234567)).toBe("INC-1234567");
+  });
+  it("keeps workflow rules intact when a caller changes the next statuses", () => {
+    const next = nextStatuses("NEW");
+    next.splice(0, next.length, "RESOLVED");
+
+    expect(() => assertTransition("NEW", "TRIAGE")).not.toThrow();
+    expect(() => assertTransition("NEW", "RESOLVED")).toThrow();
+    expect(nextStatuses("NEW")).toContain("TRIAGE");
+    expect(nextStatuses("NEW")).not.toContain("RESOLVED");
   });
 });
 describe("authorization", () => {

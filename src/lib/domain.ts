@@ -114,18 +114,27 @@ export const terminalStatuses: IncidentStatus[] = [
 export const activeStatuses = Object.values(IncidentStatus).filter(
   (status) => !terminalStatuses.includes(status),
 );
-const transitions: Record<IncidentStatus, IncidentStatus[]> = {
-  NEW: ["TRIAGE", "ASSIGNED", "CANCELLED"],
-  TRIAGE: ["ASSIGNED", "ESCALATED", "CANCELLED"],
-  ASSIGNED: ["IN_PROGRESS", "ESCALATED", "CANCELLED"],
-  IN_PROGRESS: ["ON_SITE", "WAITING", "ESCALATED", "RESOLVED"],
-  ON_SITE: ["WAITING", "ESCALATED", "RESOLVED"],
-  WAITING: ["IN_PROGRESS", "ESCALATED", "RESOLVED"],
-  ESCALATED: ["ASSIGNED", "IN_PROGRESS", "CANCELLED"],
-  RESOLVED: ["CLOSED"],
-  CLOSED: [],
-  CANCELLED: [],
-};
+const transitions: Readonly<Record<IncidentStatus, readonly IncidentStatus[]>> =
+  {
+    NEW: ["TRIAGE", "ASSIGNED", "CANCELLED"],
+    TRIAGE: ["ASSIGNED", "ESCALATED", "CANCELLED"],
+    ASSIGNED: ["IN_PROGRESS", "ESCALATED", "CANCELLED"],
+    IN_PROGRESS: ["ON_SITE", "WAITING", "ESCALATED", "RESOLVED"],
+    ON_SITE: ["WAITING", "ESCALATED", "RESOLVED"],
+    WAITING: ["IN_PROGRESS", "ESCALATED", "RESOLVED"],
+    ESCALATED: ["ASSIGNED", "IN_PROGRESS", "CANCELLED"],
+    RESOLVED: ["CLOSED"],
+    CLOSED: [],
+    CANCELLED: [],
+  };
+const visitTransitions: Readonly<Record<VisitStatus, readonly VisitStatus[]>> =
+  {
+    PLANNED: ["TRAVELING", "CANCELLED"],
+    TRAVELING: ["ON_SITE", "CANCELLED"],
+    ON_SITE: ["COMPLETED"],
+    COMPLETED: [],
+    CANCELLED: [],
+  };
 export class DomainError extends Error {
   constructor(
     message: string,
@@ -163,16 +172,9 @@ export function assertTransition(from: IncidentStatus, to: IncidentStatus) {
     );
 }
 export function nextStatuses(from: IncidentStatus) {
-  return transitions[from];
+  return [...transitions[from]];
 }
 export function assertVisitTransition(from: VisitStatus, to: VisitStatus) {
-  const allowed: Record<VisitStatus, VisitStatus[]> = {
-    PLANNED: ["TRAVELING", "CANCELLED"],
-    TRAVELING: ["ON_SITE", "CANCELLED"],
-    ON_SITE: ["COMPLETED"],
-    COMPLETED: [],
-    CANCELLED: [],
-  };
-  if (!allowed[from].includes(to))
+  if (!visitTransitions[from].includes(to))
     throw new DomainError("Недопустимый переход статуса выезда.", 409);
 }
