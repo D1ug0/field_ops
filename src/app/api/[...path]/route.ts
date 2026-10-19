@@ -95,7 +95,7 @@ async function read(
       })),
     ];
   }
-  if (resource === "incidents")
+  if (resource === "incidents" && !nested)
     return id
       ? getIncident(actor, id)
       : paginated
@@ -107,10 +107,11 @@ async function read(
       const input = { ...filters, location: id };
       return paginated ? listDevicePage(input) : listDevices(input);
     }
+    if (nested) throw new DomainError("Маршрут не найден.", 404);
     const all = await listLocations(actor);
     return id ? (all.find((item) => item.id === id) ?? null) : all;
   }
-  if (resource === "devices")
+  if (resource === "devices" && !nested)
     return id
       ? db.device.findUnique({
           where: { id },
@@ -125,25 +126,25 @@ async function read(
       : paginated
         ? listDevicePage(filters)
         : listDevices(filters);
-  if (resource === "visits") return listVisits(actor);
-  if (resource === "engineers") return engineers();
-  if (resource === "diagnostic-templates")
+  if (resource === "visits" && !id) return listVisits(actor);
+  if (resource === "engineers" && !id) return engineers();
+  if (resource === "diagnostic-templates" && !id)
     return db.diagnosticTemplate.findMany({
       include: { steps: { orderBy: { order: "asc" } } },
     });
-  if (resource === "knowledge")
+  if (resource === "knowledge" && !id)
     return db.knowledgeArticle.findMany({
       where: filters.q
         ? { title: { contains: filters.q, mode: "insensitive" } }
         : {},
     });
-  if (resource === "alerts")
+  if (resource === "alerts" && !id)
     return db.alert.findMany({
       where: { resolvedAt: null },
       include: { device: true, location: true },
       orderBy: { createdAt: "desc" },
     });
-  if (resource === "monitoring")
+  if (resource === "monitoring" && !id)
     return db.device.groupBy({ by: ["status"], _count: { _all: true } });
   throw new DomainError("Маршрут не найден.", 404);
 }
@@ -167,7 +168,7 @@ async function mutate(
     if (id && !action && method === "PATCH")
       return updatePriority(actor, id, input);
     if (!id && method === "POST") return createIncident(actor, input);
-    if (id && method === "POST") {
+    if (id && action && !stepId && method === "POST") {
       if (action === "assign") return assignIncident(actor, id, input);
       if (action === "comments") return addComment(actor, id, input);
       if (action === "diagnostics") return startDiagnostics(actor, id, input);
@@ -181,11 +182,11 @@ async function mutate(
         close: "CLOSED",
         cancel: "CANCELLED",
       };
-      if (action in actions)
+      if (Object.hasOwn(actions, action))
         return transitionIncident(actor, id, actions[action], input);
     }
   }
-  if (resource === "visits" && method === "POST") {
+  if (resource === "visits" && !stepId && method === "POST") {
     if (!id) return scheduleVisit(actor, input);
     const actions = {
       "start-travel": "TRAVELING",
@@ -193,7 +194,7 @@ async function mutate(
       complete: "COMPLETED",
       cancel: "CANCELLED",
     } as const;
-    if (action in actions)
+    if (Object.hasOwn(actions, action))
       return changeVisit(
         actor,
         id,
@@ -204,7 +205,7 @@ async function mutate(
   if (resource === "diagnostics" && id) {
     if (action === "steps" && stepId && method === "PATCH")
       return recordStep(actor, id, stepId, input);
-    if (action === "complete" && method === "POST")
+    if (action === "complete" && !stepId && method === "POST")
       return completeDiagnostics(actor, id, input);
   }
   if (resource === "maintenance" && !id && method === "POST")
