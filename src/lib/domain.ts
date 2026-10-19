@@ -1,7 +1,13 @@
-import type {
+import {
   IncidentStatus,
-  Role,
-  VisitStatus,
+  type DeviceCategory,
+  type DeviceStatus,
+  type LocationType,
+  type MaintenanceType,
+  type Priority,
+  type Role,
+  type StepStatus,
+  type VisitStatus,
 } from "@/generated/prisma/enums";
 
 export type Actor = { id: string; name: string; email: string; role: Role };
@@ -11,7 +17,7 @@ export const roles = {
   FIELD_ENGINEER: "Выездной инженер",
   SUPPORT_ENGINEER: "Инженер поддержки",
   VIEWER: "Наблюдатель",
-};
+} satisfies Record<Role, string>;
 export const statuses = {
   NEW: "Новый",
   TRIAGE: "Разбор",
@@ -23,13 +29,13 @@ export const statuses = {
   RESOLVED: "Решён",
   CLOSED: "Закрыт",
   CANCELLED: "Отменён",
-};
+} satisfies Record<IncidentStatus, string>;
 export const priorities = {
   P1_CRITICAL: "P1 · Критический",
   P2_HIGH: "P2 · Высокий",
   P3_MEDIUM: "P3 · Средний",
   P4_LOW: "P4 · Низкий",
-};
+} satisfies Record<Priority, string>;
 export const deviceStatuses = {
   ONLINE: "В сети",
   OFFLINE: "Недоступно",
@@ -37,20 +43,20 @@ export const deviceStatuses = {
   MAINTENANCE: "Обслуживание",
   UNKNOWN: "Неизвестно",
   RETIRED: "Списано",
-};
+} satisfies Record<DeviceStatus, string>;
 export const locationTypes = {
   STORE: "Магазин",
   WAREHOUSE: "Склад",
   PRODUCTION: "Производство",
   OFFICE: "Офис",
-};
+} satisfies Record<LocationType, string>;
 export const visitStatuses = {
   PLANNED: "Запланирован",
   TRAVELING: "В пути",
   ON_SITE: "На объекте",
   COMPLETED: "Завершён",
   CANCELLED: "Отменён",
-};
+} satisfies Record<VisitStatus, string>;
 export const categories = {
   POS: "Касса / POS",
   PC: "Рабочая станция",
@@ -68,7 +74,7 @@ export const categories = {
   IP_PHONE: "IP-телефон",
   CAMERA: "Камера",
   OTHER: "Другое",
-};
+} satisfies Record<DeviceCategory, string>;
 export const maintenanceTypes = {
   DIAGNOSTIC: "Диагностика",
   REPAIR: "Ремонт",
@@ -78,7 +84,7 @@ export const maintenanceTypes = {
   CLEANING: "Чистка",
   SOFTWARE: "ПО",
   NETWORK: "Сеть",
-};
+} satisfies Record<MaintenanceType, string>;
 export const rootCauses = {
   POWER: "Питание",
   CABLING: "Кабель",
@@ -99,15 +105,15 @@ export const stepStatuses = {
   FAIL: "Ошибка",
   SKIPPED: "Пропущено",
   NOT_APPLICABLE: "Не применимо",
-};
+} satisfies Record<StepStatus, string>;
 export const terminalStatuses: IncidentStatus[] = [
   "RESOLVED",
   "CLOSED",
   "CANCELLED",
 ];
-export const activeStatuses = Object.keys(statuses).filter(
-  (s) => !terminalStatuses.includes(s as IncidentStatus),
-) as IncidentStatus[];
+export const activeStatuses = Object.values(IncidentStatus).filter(
+  (status) => !terminalStatuses.includes(status),
+);
 const transitions: Record<IncidentStatus, IncidentStatus[]> = {
   NEW: ["TRIAGE", "ASSIGNED", "CANCELLED"],
   TRIAGE: ["ASSIGNED", "ESCALATED", "CANCELLED"],

@@ -1,13 +1,13 @@
 import { z } from "zod";
 import {
-  categories,
-  deviceStatuses,
-  locationTypes,
-  priorities,
-  rootCauses,
-  stepStatuses,
-  maintenanceTypes,
-} from "./domain";
+  DeviceCategory,
+  DeviceStatus,
+  LocationType,
+  MaintenanceType,
+  Priority,
+  StepStatus,
+} from "@/generated/prisma/enums";
+import { rootCauses } from "./domain";
 
 export const text = z
   .string()
@@ -29,24 +29,14 @@ const coordinate = z
 export const incidentInput = z.object({
   title: text.min(5),
   description: note,
-  priority: z.enum(
-    Object.keys(priorities) as [
-      keyof typeof priorities,
-      ...Array<keyof typeof priorities>,
-    ],
-  ),
+  priority: z.enum(Priority),
   locationId: text,
   deviceId: optionalId,
 });
 export const locationInput = z.object({
   code: text.max(30),
   name: text,
-  type: z.enum(
-    Object.keys(locationTypes) as [
-      keyof typeof locationTypes,
-      ...Array<keyof typeof locationTypes>,
-    ],
-  ),
+  type: z.enum(LocationType),
   address: text,
   city: text,
   latitude: coordinate.pipe(z.number().min(-85).max(85)),
@@ -56,23 +46,13 @@ export const locationInput = z.object({
 export const deviceInput = z.object({
   assetTag: text,
   name: text,
-  category: z.enum(
-    Object.keys(categories) as [
-      keyof typeof categories,
-      ...Array<keyof typeof categories>,
-    ],
-  ),
+  category: z.enum(DeviceCategory),
   vendor: text,
   model: text,
   serialNumber: text,
   locationId: text,
   ipAddress: z.union([z.literal(""), z.ipv4()]).default(""),
-  status: z.enum(
-    Object.keys(deviceStatuses) as [
-      keyof typeof deviceStatuses,
-      ...Array<keyof typeof deviceStatuses>,
-    ],
-  ),
+  status: z.enum(DeviceStatus),
   notes: z.string().max(5000).default(""),
 });
 export const resolveInput = z.object({
@@ -91,24 +71,14 @@ export const visitInput = z.object({
   travelNotes: z.string().max(2000).default(""),
 });
 export const stepInput = z.object({
-  status: z.enum(
-    Object.keys(stepStatuses) as [
-      keyof typeof stepStatuses,
-      ...Array<keyof typeof stepStatuses>,
-    ],
-  ),
+  status: z.enum(StepStatus),
   comment: z.string().max(2000).default(""),
   value: z.string().max(200).default(""),
 });
 export const maintenanceInput = z.object({
   deviceId: text,
   incidentId: optionalId,
-  type: z.enum(
-    Object.keys(maintenanceTypes) as [
-      keyof typeof maintenanceTypes,
-      ...Array<keyof typeof maintenanceTypes>,
-    ],
-  ),
+  type: z.enum(MaintenanceType),
   description: note,
   result: note,
 });
